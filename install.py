@@ -94,10 +94,33 @@ def install_to(dest_root: Path, replace_links: bool) -> Path | None:
     keep = dest / "config.local.json"
     if keep.exists():
         shutil.copy2(keep, new / "config.local.json")
-    old = None
+    # Everything in the old copy that is not part of the skill - a runtime or jobs folder placed
+    # here through a relative config.local.json, the user's own files - moves into the new copy.
+    skill_parts = {p.name for p in SRC.iterdir()} | {"__pycache__", "config.local.json"}
+    moved = []
     if dest.exists():
-        old = tmp / "old"
-        os.replace(dest, old)
+        try:
+            for p in dest.iterdir():
+                if p.name not in skill_parts:
+                    os.replace(p, new / p.name)
+                    moved.append(p.name)
+        except OSError as e:
+            back = True
+            for name in moved:  # put back what was already moved, leave the old copy as it was
+                try:
+                    os.replace(new / name, dest / name)
+                except OSError:
+                    back = False
+            if back:
+                shutil.rmtree(tmp, ignore_errors=True)
+            else:  # never delete user data: say where it is
+                print(f"WARNING: could not move {', '.join(moved)} back; they are in {new}")
+            print(f"skip {dest}: cannot move {e.filename} out of the old copy ({e.strerror}); "
+                  f"is the skill running? try again when it is not")
+            return None
+        if moved:
+            print(f"  kept from the old copy: {', '.join(sorted(moved))}")
+        os.replace(dest, tmp / "old")
     os.replace(new, dest)
     shutil.rmtree(tmp, ignore_errors=True)
     return dest

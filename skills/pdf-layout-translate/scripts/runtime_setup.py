@@ -12,6 +12,7 @@ uninstalls everything.  Total disk use is about 1.5 GB.
 """
 from __future__ import annotations
 
+import glob
 import hashlib
 import io
 import json
@@ -68,31 +69,19 @@ class SetupLock:
     """One setup at a time per runtime folder (an agent may retry while the first one still runs)."""
 
     def __enter__(self):
-        P.HOME.mkdir(parents=True, exist_ok=True)
+        self.lock = P.FileLock(LOCK)  # released by the OS if the setup is killed
         waited = 0
-        while True:
-            try:
-                fd = os.open(str(LOCK), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-                os.write(fd, str(os.getpid()).encode())
-                os.close(fd)
-                return self
-            except FileExistsError:
-                try:
-                    age = time.time() - LOCK.stat().st_mtime
-                except OSError:
-                    continue
-                if age > 3 * 3600 or (age > 2 and P.lock_owner_gone(LOCK)):  # left by a killed run
-                    LOCK.unlink(missing_ok=True)
-                    continue
-                if waited == 0:
-                    log(f"another setup is running ({LOCK}); waiting for it ...")
-                time.sleep(5)
-                waited += 5
-                if waited > 3600:
-                    raise SystemExit(f"setup lock still held after 1 h: {LOCK} (delete it if no setup is running)")
+        while not self.lock.acquire():
+            if waited == 0:
+                log(f"another setup is running ({P.HOME}); waiting for it ...")
+            time.sleep(5)
+            waited += 5
+            if waited > 3600:
+                raise SystemExit(f"another setup of {P.HOME} is still running after 1 h")
+        return self
 
     def __exit__(self, *exc):
-        LOCK.unlink(missing_ok=True)
+        self.lock.release()
 
 
 # --------------------------------------------------------------------------- uv
@@ -185,14 +174,24 @@ def in_runtime(script: str, *args, required: bool = True) -> bool:
         return False
 
 
+def check_platform():
+    """Fail early (before 1.5 GB of downloads) where the dependencies have no binary packages."""
+    if sys.platform.startswith("linux") and platform.libc_ver()[0] != "glibc" and glob.glob("/lib/ld-musl-*"):
+        raise SystemExit("musl Linux (Alpine ...) is not supported: onnxruntime, needed by BabelDOC, has no "
+                         "musl build.  Use a glibc distribution (Debian, Ubuntu, Fedora ...) or such a container.")
+
+
 def setup(force: bool = False):
     if is_ready() and not force:
         log(f"runtime already set up: {P.HOME}")
         return
+    check_platform()
+    P.HOME.mkdir(parents=True, exist_ok=True)
     with SetupLock():
         if is_ready() and not force:  # finished by the run we waited for
             log(f"runtime already set up: {P.HOME}")
             return
+        P.READY.unlink(missing_ok=True)  # an interrupted (re)install must not look finished
         log(f"runtime folder: {P.HOME}  (about 1.5 GB; change it with LT_HOME)")
         P.PROFILE.mkdir(parents=True, exist_ok=True)
         try:
@@ -211,8 +210,11 @@ def setup(force: bool = False):
         log("OCR models")
         if not in_runtime("image_translate.py", "warmup", "--lang", "en,ko", required=False):
             log("WARNING: OCR models not downloaded yet; they are fetched again on first use")
-        P.READY.write_text(json.dumps({"version": SETUP_VERSION, "python": PY_VERSION, "platform": sys.platform},
-                                      indent=1), "utf-8")
+        # written by the runtime's interpreter: a Microsoft Store Python would put its own writes
+        # under AppData into a private redirected folder that other interpreters never see
+        ready = json.dumps({"version": SETUP_VERSION, "python": PY_VERSION, "platform": sys.platform})
+        run(*P.runtime_command(["-I", "-c", "import sys; open(sys.argv[1], 'w').write(sys.argv[2])",
+                                P.READY, ready]))
         log("done")
 
 

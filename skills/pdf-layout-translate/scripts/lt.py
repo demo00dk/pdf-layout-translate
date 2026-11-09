@@ -46,6 +46,9 @@ PROFILES = {
     "generic": dict(_PROSE),
 }
 PH_RE = re.compile(r"\{v\d+\}|<style id='\d+'>|</style>")
+# exit code of a runtime process that ran to its end: a process ended from outside (e.g. by security
+# software on Windows) can exit with 0, so 0 alone does not prove that the command finished
+OK_EXIT = 86
 TEX_RE = re.compile(r"\b(?:pdf|lua|xe)?tex\b|latex|dvipdf|miktex|tex ?live", re.I)
 
 
@@ -76,26 +79,17 @@ class JobLock:
     """prepare / build of one job must not run twice at once (an agent may retry a timed-out call)."""
 
     def __init__(self, job: Path):
-        self.path = job / ".lock"
+        self.job = job
+        self.lock = P.FileLock(job / ".lock")  # released by the OS if the run is killed
 
     def __enter__(self):
-        import time
-
-        if self.path.exists():
-            age = time.time() - self.path.stat().st_mtime
-            if age > 3 * 3600 or (age > 2 and P.lock_owner_gone(self.path)):
-                self.path.unlink(missing_ok=True)  # left by a killed run
-        try:
-            fd = os.open(str(self.path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-        except FileExistsError:
-            sys.exit(f"this job is busy (another prepare/build is running): {self.path}\n"
-                     "wait for it to finish; delete the .lock file only if nothing is running")
-        os.write(fd, str(os.getpid()).encode())
-        os.close(fd)
+        if not self.lock.acquire():
+            sys.exit(f"this job is busy: another prepare/build is running on {self.job}\n"
+                     "wait for it to finish, then run the command again")
         return self
 
     def __exit__(self, *exc):
-        self.path.unlink(missing_ok=True)
+        self.lock.release()
 
 
 def safe_copy(src: Path, dst: Path) -> Path:
@@ -459,42 +453,34 @@ def main():
             runtime_setup.setup()
         # re-run this command inside the runtime (-s: ignore the user's site-packages)
         cmd, env = P.runtime_command(["-s", "-X", "utf8", Path(__file__).resolve(), *sys.argv[1:]])
-        done = P.HOME / f"run-{os.getpid()}.done"  # the runtime folder is writable by design
-        done.unlink(missing_ok=True)
         env["LT_REEXEC"] = "1"
-        env["LT_DONE_FILE"] = str(done)
         rc = subprocess.call(cmd, env=env)
-        finished = done.exists()
-        done.unlink(missing_ok=True)
-        if rc == 0 and not finished:
-            sys.exit(
-                "ERROR: the runtime process was stopped before it finished, without reporting an error.\n"
-                "On Windows this is almost always security software (360, Tencent PC Manager, Huorong, "
-                "Kaspersky ...) ending python.exe while it rewrites PDF files.  Add these folders to its "
-                f"trusted list / exclusions, then run the same command again:\n  {P.HOME}\n  "
-                f"{getattr(args, 'job', None) or P.JOBS}")
+        if rc == OK_EXIT:
+            sys.exit(0)
+        if rc == 0:  # a finished run exits with OK_EXIT; 0 means it was ended from outside
+            msg = "ERROR: the runtime process was stopped before it finished, without reporting an error."
+            if P.IS_WIN:
+                msg += ("\nOn Windows this is almost always security software (360, Tencent PC Manager, "
+                        "Huorong, Kaspersky ...) ending python.exe while it rewrites PDF files.  Add these "
+                        f"folders to its trusted list / exclusions, then run the same command again:\n"
+                        f"  {P.HOME}\n  {getattr(args, 'job', None) or P.JOBS}")
+            else:
+                msg += "\nIt was probably ended from outside (memory limit, timeout); run the same command again."
+            sys.exit(msg)
         sys.exit(rc)
     os.environ.update(P.runtime_env())  # also when someone runs the runtime's python directly
     if args.cmd == "setup":
         sys.exit("run `lt.py setup` with a normal Python, not the runtime's own interpreter")
+    launched = os.environ.get("LT_REEXEC") == "1"
     try:
         {"check": cmd_check, "prepare": cmd_prepare, "todo": cmd_todo, "merge": cmd_merge,
          "build": cmd_build, "status": cmd_status}[args.cmd](args)
     except SystemExit as e:
-        if e.code in (None, 0):
-            _mark_done()
+        if launched and e.code in (None, 0):
+            sys.exit(OK_EXIT)
         raise
-    _mark_done()
-
-
-def _mark_done():
-    """Tell the launching process that the command ran to its end (see the check in main)."""
-    marker = os.environ.pop("LT_DONE_FILE", "")
-    if marker:
-        try:
-            Path(marker).write_text("ok", "ascii")
-        except OSError:
-            pass
+    if launched:
+        sys.exit(OK_EXIT)
 
 
 if __name__ == "__main__":

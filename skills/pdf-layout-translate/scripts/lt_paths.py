@@ -15,6 +15,7 @@ paths from the home folder: runtime_env() passes the resolved values down.
 """
 from __future__ import annotations
 
+import errno
 import json
 import os
 import sys
@@ -30,8 +31,17 @@ REAL_HOME = Path(os.environ.get("LT_REAL_HOME") or Path.home())  # the user's ho
 def _local_config() -> dict:
     p = SKILL / "config.local.json"
     try:
-        return json.loads(p.read_text("utf-8-sig")) if p.exists() else {}
-    except (OSError, ValueError):
+        data = json.loads(p.read_text("utf-8-sig")) if p.exists() else {}
+        if not isinstance(data, dict):
+            raise ValueError("expected a JSON object")
+        for key, value in data.items():  # "D:\tools" is valid JSON: \t becomes a tab
+            if isinstance(value, str) and any(c in value for c in "\t\n\r\b\f"):
+                raise ValueError(f'"{key}" contains a control character')
+        return data
+    except (OSError, ValueError) as e:
+        if not os.environ.get("LT_REEXEC"):  # say it once, in the launching process
+            print(f"WARNING: ignoring {p}: {e}  (write Windows paths with / or \\\\, e.g. "
+                  f'{{"home": "D:/tools/plt"}})', file=sys.stderr)
         return {}
 
 
@@ -130,41 +140,53 @@ def runtime_command(args: list, base: dict | None = None) -> tuple[list[str], di
     return [exe, *[str(a) for a in args]], env
 
 
-def pid_alive(pid: int) -> bool:
-    """Is process `pid` still running?  (lock files of killed runs are taken over at once)"""
-    if pid <= 0:
-        return False
-    if IS_WIN:  # os.kill(pid, 0) would terminate the process on Windows
-        import ctypes
+class FileLock:
+    """Exclusive lock held through an open file (msvcrt / flock).  The operating system releases it
+    when the process ends, also when it is killed, so a crashed run never blocks the next one.  The
+    lock file itself stays; it is not a sign that something is running."""
 
-        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
-        k32.OpenProcess.restype = ctypes.c_void_p
-        h = k32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
-        if not h:
-            return ctypes.get_last_error() == 5  # access denied: exists, owned by someone else
+    _BUSY = {errno.EAGAIN, errno.EACCES, errno.EWOULDBLOCK, errno.EDEADLK,
+             getattr(errno, "EDEADLOCK", errno.EDEADLK)}
+
+    def __init__(self, path: Path):
+        self.path = Path(path)
+        self.fh = None
+
+    def acquire(self) -> bool:
+        """True when locked (or when the file system cannot lock at all), False when held elsewhere."""
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        fh = open(self.path, "a+b")
         try:
-            code = ctypes.c_ulong()
-            k32.GetExitCodeProcess.argtypes = (ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong))
-            return bool(k32.GetExitCodeProcess(h, ctypes.byref(code))) and code.value == 259  # STILL_ACTIVE
-        finally:
-            k32.CloseHandle.argtypes = (ctypes.c_void_p,)
-            k32.CloseHandle(h)
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
+            if IS_WIN:
+                import msvcrt
+
+                fh.seek(0)
+                msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as e:
+            if e.errno in self._BUSY:
+                fh.close()
+                return False
+            # e.g. a network share without lock support: carry on unlocked rather than block forever
+        self.fh = fh
         return True
-    return True
 
+    def release(self):
+        if self.fh is None:
+            return
+        try:
+            if IS_WIN:
+                import msvcrt
 
-def lock_owner_gone(lock: Path) -> bool:
-    """The process that wrote `lock` (its pid is the file content) no longer runs."""
-    try:
-        text = lock.read_text("ascii").strip()
-        return bool(text) and not pid_alive(int(text))  # empty: being written right now
-    except (OSError, ValueError):
-        return False
+                self.fh.seek(0)
+                msvcrt.locking(self.fh.fileno(), msvcrt.LK_UNLCK, 1)
+        except OSError:
+            pass
+        self.fh.close()  # closing also drops a flock
+        self.fh = None
 
 
 def uv_env(base: dict | None = None) -> dict:

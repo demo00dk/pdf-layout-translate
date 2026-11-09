@@ -23,7 +23,7 @@
 支持的系统：
 - Windows x64；Windows on ARM 会自动使用 x64 版 Python，通过模拟运行。
 - macOS（Intel 和 Apple 芯片）。
-- Linux（x86-64 和 ARM64，glibc 或 musl）。
+- Linux（x86-64 和 ARM64，glibc 发行版）。Alpine 等 musl 系统不支持：BabelDOC 依赖的 onnxruntime 没有 musl 版本。
 
 ## 安装
 
@@ -146,7 +146,7 @@ The agent you are already using does the translation, so no translation API key 
 - **Layout**: [BabelDOC](https://github.com/funstory-ai/BabelDOC) re-typesets the text. Formulas, code and images stay as they are.
 - **Text in images**: local OCR (RapidOCR + PP-OCRv5) reads it, and the Chinese is drawn back in place.
 - **Output**: a Chinese PDF, a side-by-side bilingual PDF, and per-page review images.
-- **Platforms**: Windows, macOS and Linux, with any agent that supports `SKILL.md` and can run shell commands (Claude Code, Codex CLI, Gemini CLI, Antigravity, OpenCode, …).
+- **Platforms**: Windows, macOS and Linux (glibc; Alpine/musl is not supported because onnxruntime has no musl build), with any agent that supports `SKILL.md` and can run shell commands (Claude Code, Codex CLI, Gemini CLI, Antigravity, OpenCode, …).
 
 **Install**
 

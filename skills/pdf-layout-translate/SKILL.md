@@ -26,7 +26,7 @@ python "${CLAUDE_SKILL_DIR}/scripts/lt.py" check
   - 每次运行都会写运行环境目录（缓存、新语言的 OCR 模型）。agent 在沙箱里运行时（例如禁网、只能写工作区），需要放开这个目录的写权限；首次安装还要联网。做不到时，请用户在自己的终端运行一次 `lt.py setup`，或把 `LT_HOME` 设到可写目录。
   - 你的文件工具只能访问工作区时，用 `--job ./pdf-translate/<名称>` 把任务文件夹放进工作区，这样才能写批量译文、查看对照图。
 - 终端显示中文、韩文乱码时（例如 Windows PowerShell 的旧代码页），用 `todo --out <文件>` 把待译内容写成 UTF-8 文件再读。成品路径也会写进 `<job>/result.json`。
-- 命令报错 “the runtime process was stopped before it finished”：进程被外部结束了，Windows 上多半是 360、腾讯电脑管家、火绒等安全软件把改写 PDF 的 python.exe 当成勒索行为拦截。把报错里列出的两个目录告诉用户，请用户加入安全软件的信任区（你不要自己改安全设置），然后原样重跑。任务锁会自动释放，不用手动删除。
+- 命令报错 “the runtime process was stopped before it finished”：进程被外部结束了，Windows 上多半是 360、腾讯电脑管家、火绒等安全软件把改写 PDF 的 python.exe 当成勒索行为拦截。把报错里列出的两个目录告诉用户，请用户加入安全软件的信任区（你不要自己改安全设置），然后原样重跑。被结束的运行不会留下占用，任务文件夹里的 `.lock` 文件不用删。
 
 翻译前读一遍 [references/translation-guide.md](references/translation-guide.md)，其中有占位符、哪些内容保留原文、截图文字的处理规则。
 
