@@ -1,0 +1,4 @@
+interface:
+  display_name: "PDF 保版式翻译"
+  short_description: "PDF 译成简体中文，保留版式，含截图文字"
+  default_prompt: "Use $pdf-layout-translate to translate this PDF into Simplified Chinese and keep the original layout."

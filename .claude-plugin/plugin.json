@@ -1,0 +1,8 @@
+{
+  "name": "pdf-layout-translate",
+  "version": "1.1.0",
+  "description": "Translate PDFs into Simplified Chinese while keeping the original layout (text inside screenshots too). The agent translates; no translation API, nothing uploaded.",
+  "author": { "name": "pdf-layout-translate contributors" },
+  "license": "AGPL-3.0",
+  "keywords": ["pdf", "translation", "layout", "chinese", "babeldoc", "ocr"]
+}

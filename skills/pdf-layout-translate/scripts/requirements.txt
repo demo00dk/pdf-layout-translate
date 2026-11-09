@@ -1,0 +1,8 @@
+# Installed into the private runtime venv by runtime_setup.py (Python 3.12).
+babeldoc==0.7.1
+pymupdf==1.28.2
+rapidocr==3.10.0
+fonttools>=4.50
+pillow>=10
+opencv-python-headless>=4.8
+numpy>=1.26

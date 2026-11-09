@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+# per-machine runtime location override
+config.local.json
+# test output
+tests/out/
