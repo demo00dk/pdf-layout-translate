@@ -20,4 +20,12 @@ On Windows the inline-math fonts are renamed copies of the system's Cambria font
 locally on the user's machine and never distributed.
 
 Because the skill's scripts import and extend BabelDOC (AGPL-3.0), the skill itself is released
-under the GNU Affero General Public License v3.0 — see [LICENSE](LICENSE).
+under the GNU Affero General Public License v3.0. See [LICENSE](LICENSE).
+
+## Examples and images
+
+The documents in `examples/` and the pictures in `docs/images/` were written for this repository;
+the slides, the screenshots inside them and the paper are made up. The PDFs contain embedded font
+subsets, as any printed PDF does: Segoe UI, Consolas, Malgun Gothic, Times New Roman and Cambria Math
+(Microsoft, embedded when the sources were printed to PDF) and, in the translated files, Source Han
+Sans/Serif, Noto Sans/Serif and LXGW WenKai (SIL OFL-1.1).
