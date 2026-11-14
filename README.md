@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/hero-zh.webp" width="880" alt="pdf-layout-translate：英文论文译成中文后，标题、公式、图表和表格都在原来的位置">
+  <img src="docs/images/hero-zh.webp" width="880" alt="pdf-layout-translate：英文论文和韩文课件译成中文后，标题、公式、图表、表格和截图都在原来的位置">
 </p>
 
 <p align="center">

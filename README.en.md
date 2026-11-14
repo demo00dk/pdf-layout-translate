@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/hero-en.webp" width="880" alt="pdf-layout-translate: an English paper translated into Chinese, with the title, formulas, chart and table in their original places">
+  <img src="docs/images/hero-en.webp" width="880" alt="pdf-layout-translate: an English paper and a Korean slide translated into Chinese, with titles, formulas, chart, table and screenshot in their original places">
 </p>
 
 <p align="center">

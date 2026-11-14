@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/hero-ko.webp" width="880" alt="pdf-layout-translate: 영어 논문을 중국어로 옮긴 뒤에도 제목, 수식, 그래프, 표가 원래 자리에 있다">
+  <img src="docs/images/hero-ko.webp" width="880" alt="pdf-layout-translate: 영어 논문과 한국어 슬라이드를 중국어로 옮긴 뒤에도 제목, 수식, 그래프, 표, 스크린샷이 원래 자리에 있다">
 </p>
 
 <p align="center">
