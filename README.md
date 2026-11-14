@@ -27,7 +27,7 @@
 
 ## 安装
 
-先克隆或下载本仓库，然后任选一种方式安装。
+先克隆或下载本仓库（`git clone https://github.com/demo00dk/pdf-layout-translate.git`），然后任选一种方式安装。
 
 **一键安装到本机已有的 agent**：
 
@@ -37,10 +37,10 @@ python install.py --list       # 只看会装到哪里
 python install.py --agent codex --setup   # 只装 Codex，并立即安装运行环境
 ```
 
-**Claude Code 插件市场**（把 `OWNER` 换成仓库所有者）：
+**Claude Code 插件市场**：
 
 ```
-/plugin marketplace add OWNER/pdf-layout-translate
+/plugin marketplace add demo00dk/pdf-layout-translate
 /plugin install pdf-layout-translate@pdf-layout-translate
 ```
 
@@ -152,7 +152,7 @@ The agent you are already using does the translation, so no translation API key 
 
 - Run `python install.py`; it detects your agents' skill folders.
 - Or copy `skills/pdf-layout-translate` into your agent's skills folder.
-- Claude Code users can also run `/plugin marketplace add OWNER/pdf-layout-translate`.
+- Claude Code users can also run `/plugin marketplace add demo00dk/pdf-layout-translate`, then `/plugin install pdf-layout-translate@pdf-layout-translate`.
 
 **First run**
 
