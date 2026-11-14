@@ -7,7 +7,8 @@
   <a href="#安装">安装</a> ·
   <a href="#用法">用法</a> ·
   <a href="examples/">示例 PDF</a> ·
-  <a href="README.en.md">English</a>
+  <a href="README.en.md">English</a> ·
+  <a href="README.ko.md">한국어</a>
 </p>
 
 <p align="center">

@@ -7,7 +7,8 @@
   <a href="#install">Install</a> ·
   <a href="#use">Use</a> ·
   <a href="examples/">Sample PDFs</a> ·
-  <a href="README.md">简体中文</a>
+  <a href="README.md">简体中文</a> ·
+  <a href="README.ko.md">한국어</a>
 </p>
 
 <p align="center">
